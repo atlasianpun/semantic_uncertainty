@@ -1,26 +1,36 @@
-"""Sample answers from LLMs on QA task."""
+"""Sample answers from LLMs on QA task.
+This script generates answers using language models and computes various metrics
+including accuracy and uncertainty measures."""
+
+# Standard library imports
 import gc
 import os
 import logging
 import random
 from tqdm import tqdm
 
+# Scientific computing and ML imports
 import numpy as np
 import torch
 import wandb
 
+# Custom module imports
 from uncertainty.data.data_utils import load_ds
 from uncertainty.utils import utils
 from uncertainty.uncertainty_measures import p_true as p_true_utils
 from compute_uncertainty_measures import main as main_compute
 
-
+# Setup logging
 utils.setup_logger()
 
-
 def main(args):
+    """Main function to generate answers and compute metrics.
 
-    # Setup run.
+    Args:
+        args: Configuration arguments including model settings, dataset choices,
+              and evaluation parameters.
+    """
+    # Handle dataset-specific configurations
     if args.dataset == 'svamp':
         if not args.use_context:
             logging.info('Forcing `use_context=True` for svamp dataset.')
@@ -30,14 +40,18 @@ def main(args):
             logging.info('Forcing `answerable_only=True` for squad dataset.')
             args.answerable_only = True
 
+    # Initialize experiment tracking and setup
     experiment_details = {'args': args}
     random.seed(args.random_seed)
     user = os.environ['USER']
     slurm_jobid = os.getenv('SLURM_JOB_ID', None)
     scratch_dir = os.getenv('SCRATCH_DIR', '.')
+
+    # Create uncertainty directory if it doesn't exist
     if not os.path.exists(f"{scratch_dir}/{user}/uncertainty"):
         os.makedirs(f"{scratch_dir}/{user}/uncertainty")
 
+    # Initialize wandb for experiment tracking
     wandb.init(
         entity=args.entity,
         project="semantic_uncertainty" if not args.debug else "semantic_uncertainty_debug",
@@ -47,35 +61,38 @@ def main(args):
     )
     logging.info('Finished wandb init.')
 
-    # Get accuracy metric.
+    # Get accuracy metric based on configuration
     metric = utils.get_metric(args.metric)
 
-    # Load dataset.
+    # Load and prepare datasets
     train_dataset, validation_dataset = load_ds(
         args.dataset, add_options=args.use_mc_options, seed=args.random_seed)
+
+    # Handle out-of-distribution training dataset if specified
     if args.ood_train_dataset is not None:
         logging.warning(
             'Using OOD dataset %s to construct few-shot prompts and train p_ik.',
             args.ood_train_dataset)
-        # Get indices of answerable and unanswerable questions and construct prompt.
         train_dataset, _ = load_ds(args.ood_train_dataset, add_options=args.use_mc_options)
     if not isinstance(train_dataset, list):
         logging.info('Train dataset: %s', train_dataset)
 
-    # Get indices of answerable and unanswerable questions and construct prompt.
+    # Split dataset into answerable and unanswerable questions
     answerable_indices, unanswerable_indices = utils.split_dataset(train_dataset)
 
+    # Handle answerable-only configuration
     if args.answerable_only:
         unanswerable_indices = []
         val_answerable, val_unanswerable = utils.split_dataset(validation_dataset)
         del val_unanswerable
         validation_dataset = [validation_dataset[i] for i in val_answerable]
 
+    # Create few-shot prompt for model
     prompt_indices = random.sample(answerable_indices, args.num_few_shot)
     experiment_details['prompt_indices'] = prompt_indices
     remaining_answerable = list(set(answerable_indices) - set(prompt_indices))
 
-    # Create Few-Shot prompt.
+    # Setup prompt generation
     make_prompt = utils.get_make_prompt(args)
     BRIEF = utils.BRIEF_PROMPTS[args.brief_prompt]
     arg = args.brief_always if args.enable_brief else True
@@ -85,10 +102,10 @@ def main(args):
     experiment_details['BRIEF'] = BRIEF
     logging.info('Prompt is: %s', prompt)
 
-    # Initialize model.
+    # Initialize the language model
     model = utils.init_model(args)
 
-    # Initialize prompt for p_true baseline.
+    # Setup p_true baseline if requested
     if args.compute_p_true:
         logging.info(80*'#')
         logging.info('Constructing few-shot prompt for p_true.')
@@ -107,49 +124,49 @@ def main(args):
         experiment_details['p_true_indices'] = p_true_indices
         experiment_details['p_true_responses'] = p_true_responses
         experiment_details['p_true_few_shot_prompt'] = p_true_few_shot_prompt
-        logging.info('Finished constructing few-shot prompt for p_true.')
-        logging.info(80*'#')
-        logging.info('p_true_few_shot_prompt: %s', p_true_few_shot_prompt)
-        logging.info(80*'#')
 
-    # Start answer generation.
+    # Start answer generation
     logging.info(80 * '=')
     logging.info('Generating answers: ')
     logging.info(80 * '=')
+
+    # Process both train and validation splits
     for dataset_split in ['train', 'validation']:
         logging.info(80 * 'x')
         logging.info('Starting with dataset_split %s.', dataset_split)
         logging.info(80 * 'x')
 
-        # This will store all input data and model predictions.
+        # Initialize storage for results
         accuracies, generations, results_dict, p_trues = [], {}, {}, []
 
+        # Select appropriate dataset and indices based on split
         if dataset_split == 'train':
             if not args.get_training_set_generations:
                 logging.info('Skip training data.')
                 continue
             dataset = train_dataset
             possible_indices = list(set(remaining_answerable) | set(unanswerable_indices))
-
         else:
             dataset = validation_dataset
             possible_indices = range(0, len(dataset))
 
-        # Evaluate over random subset of the datasets.
+        # Sample subset of dataset for evaluation
         indices = random.sample(possible_indices, min(args.num_samples, len(dataset)))
         experiment_details[dataset_split] = {'indices': indices}
 
         if args.num_samples > len(dataset):
             logging.warning('Not enough samples in dataset. Using all %d samples.', len(dataset))
 
+        # Generate answers for each example
         it = 0
         for index in tqdm(indices):
+            # Periodic garbage collection
             if (it + 1 % 10) == 0:
                 gc.collect()
                 torch.cuda.empty_cache()
             it += 1
 
-            # Grab example at index.
+            # Get example and prepare input
             example = dataset[index]
             question, context = example["question"], example['context']
             generations[example['id']] = {'question': question, 'context': context}
@@ -163,31 +180,29 @@ def main(args):
 
             full_responses = []
 
-            # We sample one low temperature answer on which we will compute the
-            # accuracy and args.num_generation high temperature answers which will
-            # be used to estimate the entropy variants.
-
+            # Determine number of generations needed
             if dataset_split == 'train' and args.get_training_set_generations_most_likely_only:
                 num_generations = 1
             else:
                 num_generations = args.num_generations + 1
 
+            # Generate multiple answers with different temperatures
             for i in range(num_generations):
-
-                # Temperature for first generation is always `0.1`.
+                # First generation uses low temperature (0.1), others use specified temperature
                 temperature = 0.1 if i == 0 else args.temperature
 
                 predicted_answer, token_log_likelihoods, embedding = model.predict(
                     local_prompt, temperature)
                 embedding = embedding.cpu() if embedding is not None else None
 
-                # Only compute accuracy if question is answerable.
+                # Compute accuracy if needed
                 compute_acc = args.compute_accuracy_at_all_temps or (i == 0)
                 if correct_answer and compute_acc:
                     acc = metric(predicted_answer, example, model)
                 else:
-                    acc = 0.0  # pylint: disable=invalid-name
+                    acc = 0.0
 
+                # Handle first (low temperature) prediction
                 if i == 0:
                     logging.info('Iteration ' + str(it) + ':  ' + 80*'#')
                     if args.use_context:
@@ -206,18 +221,17 @@ def main(args):
                     generations[example['id']].update({
                         'most_likely_answer': most_likely_answer_dict,
                         'reference': utils.get_reference(example)})
-
                 else:
+                    # Store additional diverse predictions
                     logging.info('high-t prediction '.ljust(15) + str(i) + ' : ' + predicted_answer)
-                    # Aggregate predictions over num_generations.
                     full_responses.append(
                         (predicted_answer, token_log_likelihoods, embedding, acc))
 
-            # Append all predictions for this example to `generations`.
+            # Store all predictions for this example
             generations[example['id']]['responses'] = full_responses
 
+            # Compute p_true if requested (validation only)
             if args.compute_p_true and dataset_split == 'validation':
-                # Already compute p_true here. Avoid cost of generations in compute_uncertainty script.
                 p_true = p_true_utils.calculate_p_true(
                     model, question, most_likely_answer_dict['response'],
                     [r[0] for r in full_responses], p_true_few_shot_prompt,
@@ -225,14 +239,15 @@ def main(args):
                 p_trues.append(p_true)
                 logging.info('p_true: %s', p_true)
 
-        # Save generations for that split.
+        # Save results for current split
         utils.save(generations, f'{dataset_split}_generations.pkl')
 
-        # Log overall accuracy.
+        # Log overall accuracy
         accuracy = np.mean(accuracies)
         print(f"Overall {dataset_split} split accuracy: {accuracy}")
         wandb.log({f"{dataset_split}_accuracy": accuracy})
 
+        # Save uncertainty measures for validation split
         if dataset_split == 'validation':
             if args.compute_p_true:
                 results_dict['uncertainty_measures'] = {
@@ -241,13 +256,13 @@ def main(args):
                 }
             utils.save(results_dict, 'uncertainty_measures.pkl')
 
+    # Save final experiment details and cleanup
     utils.save(experiment_details, 'experiment_details.pkl')
     logging.info('Run complete.')
     del model
 
-
 if __name__ == '__main__':
-
+    # Parse arguments and run main functions
     parser = utils.get_parser()
     args, unknown = parser.parse_known_args()
     logging.info('Starting new run with args: %s', args)
@@ -258,13 +273,13 @@ if __name__ == '__main__':
     if args.compute_uncertainties:
         args.assign_new_wandb_id = False
 
-    # First sample generations from LLM.
+    # Generate answers
     logging.info('STARTING `generate_answers`!')
     main(args)
     logging.info('FINISHED `generate_answers`!')
 
+    # Compute uncertainty measures if requested
     if args.compute_uncertainties:
-        # Follow with uncertainty calculation script by default.
         args.assign_new_wandb_id = False
         gc.collect()
         torch.cuda.empty_cache()
