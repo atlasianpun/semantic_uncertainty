@@ -43,7 +43,7 @@ def main(args):
     # Initialize experiment tracking and setup
     experiment_details = {'args': args}
     random.seed(args.random_seed)
-    user = os.environ['USER']
+    user = os.environ.get('USER', 'colab_user')  # Use 'colab_user' as a default value
     slurm_jobid = os.getenv('SLURM_JOB_ID', None)
     scratch_dir = os.getenv('SCRATCH_DIR', '.')
 

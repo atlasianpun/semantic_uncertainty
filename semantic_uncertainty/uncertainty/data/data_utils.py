@@ -7,7 +7,7 @@ import datasets
 
 def load_ds(dataset_name, seed, add_options=None):
     """Load dataset."""
-    user = os.environ['USER']
+    user = os.environ.get('USER', 'colab_user')  # Use 'colab_user' as a default value
 
     train_dataset, validation_dataset = None, None
     if dataset_name == "squad":

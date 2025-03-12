@@ -33,7 +33,7 @@ def init_wandb(wandb_runid, assign_new_wandb_id, experiment_lot, entity):
         experiment_lot: Group name for the experiment
         entity: Wandb username or team name
     """
-    user = os.environ['USER']
+    user = os.environ.get('USER', 'colab_user')  # Use 'colab_user' as a default value
     slurm_jobid = os.getenv('SLURM_JOB_ID')
     scratch_dir = os.getenv('SCRATCH_DIR', '.')
 

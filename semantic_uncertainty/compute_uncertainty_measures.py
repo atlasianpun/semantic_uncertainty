@@ -60,7 +60,7 @@ def main(args):
         args.train_wandb_runid = args.eval_wandb_runid
 
     # Use environment variables to build paths for Weights & Biases (wandb).
-    user = os.environ['USER']
+    user = os.environ.get('USER', 'colab_user')  # Use 'colab_user' as a default value
     scratch_dir = os.getenv('SCRATCH_DIR', '.')
     wandb_dir = f'{scratch_dir}/{user}/uncertainty'
     slurm_jobid = os.getenv('SLURM_JOB_ID', None)
