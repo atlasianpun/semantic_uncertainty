@@ -19,10 +19,13 @@ from uncertainty.data.data_utils import load_ds
 from uncertainty.utils import utils
 from uncertainty.uncertainty_measures import p_true as p_true_utils
 from compute_uncertainty_measures import main as main_compute
+from init import initialize_huggingface
 
 # Setup logging
 utils.setup_logger()
 
+#initialize huggingface
+initialize_huggingface()
 def main(args):
     """Main function to generate answers and compute metrics.
 
