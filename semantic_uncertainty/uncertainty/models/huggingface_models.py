@@ -187,19 +187,14 @@ class HuggingfaceModel(BaseModel):
             quantization_config = {}
 
             if model_name.endswith('-8bit'):
-
                 quantization_config = {'quantization_config': BitsAndBytesConfig(load_in_8bit=True)}
-
                 model_name = model_name[:-len('-8bit')]
 
             elif model_name.endswith('-4bit'):
-
                 quantization_config = {'quantization_config': BitsAndBytesConfig(load_in_4bit=True)}
-
                 model_name = model_name[:-len('-4bit')]
 
             else:
-
                 quantization_config = {}
 
             kwargs = quantization_config if quantization_config else {}
@@ -207,31 +202,21 @@ class HuggingfaceModel(BaseModel):
             model_id = f'tiiuae/{model_name}'
 
             self.tokenizer = AutoTokenizer.from_pretrained(
-
                 model_id, device_map='auto', token_type_ids=None,
-
                 clean_up_tokenization_spaces=False)
 
             self.model = AutoModelForCausalLM.from_pretrained(
-
                 model_id,
-
                 trust_remote_code=True,
-
                 device_map='auto',
-
                 **kwargs,
-
             )
 
         else:
-
             raise ValueError
 
         self.model_name = model_name
-
         self.stop_sequences = stop_sequences + [self.tokenizer.eos_token]
-
         self.token_limit = 4096 if 'Llama-2' in model_name else 2048
 
     def predict(self, input_data, temperature, return_full=False):
