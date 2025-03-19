@@ -96,14 +96,19 @@ class HuggingfaceModel(BaseModel):
 
         if 'llama' in model_name.lower():
 
+            quantization_config = {}
             if model_name.endswith('-8bit'):
-                kwargs = {'quantization_config': BitsAndBytesConfig(
-                    load_in_8bit=True,)}
+                quantization_config = {'quantization_config': BitsAndBytesConfig(load_in_8bit=True)}
                 model_name = model_name[:-len('-8bit')]
                 eightbit = True
-            else:
-                kwargs = {}
+            elif model_name.endswith('-4bit'):
+                quantization_config = {'quantization_config': BitsAndBytesConfig(load_in_4bit=True)}
+                model_name = model_name[:-len('-4bit')]
                 eightbit = False
+            else:
+                eightbit = False
+
+            kwargs = quantization_config if quantization_config else {}
 
             if 'Llama-2' in model_name:
                 base = 'meta-llama'
@@ -152,16 +157,17 @@ class HuggingfaceModel(BaseModel):
 
         elif 'mistral' in model_name.lower():
 
+            quantization_config = {}
             if model_name.endswith('-8bit'):
-                kwargs = {'quantization_config': BitsAndBytesConfig(
-                    load_in_8bit=True,)}
+                quantization_config = {'quantization_config': BitsAndBytesConfig(load_in_8bit=True)}
                 model_name = model_name[:-len('-8bit')]
-            if model_name.endswith('-4bit'):
-                kwargs = {'quantization_config': BitsAndBytesConfig(
-                    load_in_4bit=True,)}
+            elif model_name.endswith('-4bit'):
+                quantization_config = {'quantization_config': BitsAndBytesConfig(load_in_4bit=True)}
                 model_name = model_name[:-len('-4bit')]
             else:
-                kwargs = {}
+                quantization_config = {}
+
+            kwargs = quantization_config if quantization_config else {}
 
             model_id = f'mistralai/{model_name}'
             self.tokenizer = AutoTokenizer.from_pretrained(
@@ -175,26 +181,57 @@ class HuggingfaceModel(BaseModel):
                 **kwargs,
             )
 
-        elif 'falcon' in model_name:
+
+        elif 'falcon' in model_name.lower():
+
+            quantization_config = {}
+
+            if model_name.endswith('-8bit'):
+
+                quantization_config = {'quantization_config': BitsAndBytesConfig(load_in_8bit=True)}
+
+                model_name = model_name[:-len('-8bit')]
+
+            elif model_name.endswith('-4bit'):
+
+                quantization_config = {'quantization_config': BitsAndBytesConfig(load_in_4bit=True)}
+
+                model_name = model_name[:-len('-4bit')]
+
+            else:
+
+                quantization_config = {}
+
+            kwargs = quantization_config if quantization_config else {}
+
             model_id = f'tiiuae/{model_name}'
+
             self.tokenizer = AutoTokenizer.from_pretrained(
+
                 model_id, device_map='auto', token_type_ids=None,
+
                 clean_up_tokenization_spaces=False)
 
-            kwargs = {'quantization_config': BitsAndBytesConfig(
-                load_in_8bit=True,)}
-
             self.model = AutoModelForCausalLM.from_pretrained(
+
                 model_id,
+
                 trust_remote_code=True,
+
                 device_map='auto',
+
                 **kwargs,
+
             )
+
         else:
+
             raise ValueError
 
         self.model_name = model_name
+
         self.stop_sequences = stop_sequences + [self.tokenizer.eos_token]
+
         self.token_limit = 4096 if 'Llama-2' in model_name else 2048
 
     def predict(self, input_data, temperature, return_full=False):
