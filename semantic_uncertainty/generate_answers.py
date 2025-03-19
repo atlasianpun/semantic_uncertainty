@@ -26,6 +26,7 @@ utils.setup_logger()
 
 #initialize huggingface
 initialize_huggingface()
+
 def main(args):
     """Main function to generate answers and compute metrics.
 
