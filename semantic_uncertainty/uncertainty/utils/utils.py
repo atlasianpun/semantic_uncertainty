@@ -3,6 +3,7 @@ import os
 import logging
 import argparse
 import pickle
+from datetime import datetime
 
 import wandb
 
@@ -148,13 +149,41 @@ def get_parser(stages=['generate', 'compute']):
     return parser
 
 
-def setup_logger():
-    """Setup logger to always print time and level."""
-    logging.basicConfig(
-        format='%(asctime)s %(levelname)-8s %(message)s',
-        level=logging.INFO,
-        datefmt='%Y-%m-%d %H:%M:%S')
-    logging.getLogger().setLevel(logging.INFO)  # logging.DEBUG
+def setup_logger(log_dir='/content/drive/MyDrive/experiment_logs'):
+    """Setup logger to print to both console and file in Google Drive with time and level."""
+
+    # Create the log directory if it doesn't exist
+    os.makedirs(log_dir, exist_ok=True)
+
+    # Create timestamp for unique log file
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    log_file = os.path.join(log_dir, f'experiment_{timestamp}.log')
+
+    # Clear any existing handlers
+    logger = logging.getLogger()
+    logger.handlers = []
+
+    # Set the logging level
+    logger.setLevel(logging.INFO)
+
+    # Create formatter (keeping your original format)
+    formatter = logging.Formatter(
+        fmt='%(asctime)s %(levelname)-8s %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+
+    # File handler (saves to Drive)
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+
+    # Stream handler (console output)
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
+
+    logger.info(f"Log file created at: {log_file}")
+    return logger
 
 
 def construct_fewshot_prompt_from_indices(dataset, example_indices, brief, brief_always, make_prompt):
