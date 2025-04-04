@@ -239,6 +239,7 @@ def main(args):
 
         # full_responses is a list of (response_text, token_log_likelihoods) for each generation.
         full_responses = example["responses"]
+        logging.info('the response is  %s', full_responses)
         most_likely_answer = example['most_likely_answer']
 
         # If limiting the number of generations, slice them; otherwise use all.
