@@ -294,6 +294,7 @@ def main(args):
 
             # We compute "semantic_ids" (clusters) of the responses by using the entailment model to see which
             # responses are logically equivalent or entail each other, effectively cluster them.
+            logging.info("responses into sematic entropy are %s", responses)
             semantic_ids = get_semantic_ids(
                 responses, model=entailment_model,
                 strict_entailment=args.strict_entailment, example=example)
