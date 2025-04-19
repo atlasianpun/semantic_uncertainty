@@ -185,7 +185,29 @@ def main(args):
             num_generations=num_gen,
             metric=utils.get_metric(old_exp['args'].metric))
         del p_true_responses
-
+        # del start
+        logging.info("**" * 80)
+        logging.info("p_true_few_shot_prompt inputs")
+        logging.info("model:")
+        logging.info(pt_model)
+        logging.info("pt_train_dataset:")
+        logging.info(pt_train_dataset)
+        logging.info("old_exp['p_true_indices']:")
+        logging.info(old_exp['p_true_indices'])
+        logging.info("old_exp['prompt']")
+        logging.info(old_exp['prompt'])
+        logging.info("old_exp['BRIEF']")
+        logging.info(old_exp['BRIEF'])
+        logging.info("brief_always:")
+        logging.info(old_exp['args'].brief_always and old_exp['args'].enable_brief)
+        logging.info("make_prompt")
+        logging.info(utils.get_make_prompt(old_exp['args']))
+        logging.info("num_generations")
+        logging.info(num_gen)
+        logging.info("metric")
+        logging.info(utils.get_metric(old_exp['args'].metric))
+        logging.info("**" * 80)
+        # del end
         # Log how many data points we used for p_true few-shot examples.
         wandb.config.update(
             {'p_true_num_fewshot': len_p_true}, allow_val_change=True)
@@ -336,6 +358,23 @@ def main(args):
 
         # If computing p_true in this script, we call the relevant function to get the log probability that the answer is true.
         if args.compute_p_true_in_compute_stage:
+            #del start
+            logging.info("**"*80)
+            logging.info("calculate_p_true inputs")
+            logging.info("model:")
+            logging.info(pt_model)
+            logging.info("question:")
+            logging.info(question)
+            logging.info(" most_likely_answer['response']:")
+            logging.info( most_likely_answer['response'])
+            logging.info("responses:")
+            logging.info(responses)
+            logging.info("p_true_few_shot_prompt:")
+            logging.info(p_true_few_shot_prompt)
+            logging.info("hint old_exp['args'].p_true_hint:")
+            logging.info(old_exp['args'].p_true_hint)
+            logging.info("**" * 80)
+            #del end
             p_true = p_true_utils.calculate_p_true(
                 pt_model, question, most_likely_answer['response'],
                 responses, p_true_few_shot_prompt,
