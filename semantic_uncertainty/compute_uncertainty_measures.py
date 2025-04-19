@@ -186,12 +186,21 @@ def main(args):
             metric=utils.get_metric(old_exp['args'].metric))
         del p_true_responses
         # del start
+        example = pt_train_dataset[0]
         logging.info("**" * 80)
         logging.info("p_true_few_shot_prompt inputs")
         logging.info("model:")
         logging.info(pt_model)
         logging.info("pt_train_dataset:")
         logging.info(pt_train_dataset)
+        logging.info("pt_train_dataset['id']:")
+        logging.info(example['id'])
+        logging.info("pt_train_dataset['question']:")
+        logging.info(example['question'])
+        logging.info("pt_train_dataset['context']:")
+        logging.info(example['context'])
+        logging.info("pt_train_dataset['answers]:")
+        logging.info(example['answers'])
         logging.info("old_exp['p_true_indices']:")
         logging.info(old_exp['p_true_indices'])
         logging.info("old_exp['prompt']")
