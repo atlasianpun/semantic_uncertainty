@@ -280,7 +280,21 @@ def main(args):
             responses = [fr[0] for fr in full_responses[:args.use_num_generations]]
         else:
             responses = [fr[0] for fr in full_responses]
-
+        #del start
+        logging.info("**"*80)
+        logging.info("expanding example")
+        logging.info("example")
+        logging.info(example)
+        logging.info("question")
+        logging.info(question)
+        logging.info("context")
+        logging.info(context)
+        logging.info("most_likely_answer")
+        logging.info(most_likely_answer)
+        logging.info("responses")
+        logging.info(responses)
+        logging.info("**"*80)
+        #del end
         # Optionally recompute accuracy for each most_likely_answer if the user asked for it.
         if args.recompute_accuracy:
             logging.info('Recomputing accuracy!')
