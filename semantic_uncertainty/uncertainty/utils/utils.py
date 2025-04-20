@@ -199,7 +199,19 @@ def construct_fewshot_prompt_from_indices(dataset, example_indices, brief, brief
         context = example["context"]
         question = example["question"]
         answer = example["answers"]["text"][0]
-
+        #del start
+        logging.info("**" * 80)
+        logging.info("construct_fewshot_prompt-from_indices function :")
+        logging.info("example")
+        logging.info(example)
+        logging.info("context")
+        logging.info(context)
+        logging.info("question")
+        logging.info(question)
+        logging.info("answer")
+        logging.info(answer)
+        logging.info("**" * 80)
+        #del end
         prompt = prompt + make_prompt(context, question, answer, brief, brief_always)
 
     return prompt

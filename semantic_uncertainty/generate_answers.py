@@ -100,6 +100,19 @@ def main(args):
     make_prompt = utils.get_make_prompt(args)
     BRIEF = utils.BRIEF_PROMPTS[args.brief_prompt]
     arg = args.brief_always if args.enable_brief else True
+    # start del
+    logging.info("**"*80)
+    logging.info("construct_fewshot_prompt-from_indices calling :")
+    logging.info("train_dataset")
+    logging.info(train_dataset)
+    logging.info("prompt_indices")
+    logging.info(prompt_indices)
+    logging.info("BRIEF")
+    logging.info(BRIEF)
+    logging.info("arg")
+    logging.info(arg)
+    logging.info("**" * 80)
+    #end del
     prompt = utils.construct_fewshot_prompt_from_indices(
         train_dataset, prompt_indices, BRIEF, arg, make_prompt)
     experiment_details['prompt'] = prompt
